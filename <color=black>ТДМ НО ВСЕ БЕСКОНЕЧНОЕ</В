@@ -1,0 +1,226 @@
+//var Color = importNamespace('PixelCombats.ScriptingApi.Structures');
+//var System = importNamespace('System');
+
+// 锚卯铆帽貌脿铆貌没
+var WaitingPlayersTime = 10;
+var BuildBaseTime = 30;
+var GameModeTime = 6000000000000;
+var EndOfMatchTime = 10;
+
+// 锚卯铆帽貌脿铆貌没 猫矛氓铆
+var WaitingStateValue = "Waiting";
+var BuildModeStateValue = "BuildMode";
+var GameStateValue = "Game";
+var EndOfMatchStateValue = "EndOfMatch";
+
+// 茂卯帽貌卯每铆铆没氓 茂氓冒氓矛氓铆铆没氓
+var mainTimer = Timers.GetContext().Get("Main");
+var stateProp = Properties.GetContext().Get("State");
+
+// 茂冒猫矛氓铆每氓矛 茂脿冒脿矛氓貌冒没 帽卯莽盲脿铆猫每 锚卯矛铆脿貌没
+Damage.FriendlyFire = GameMode.Parameters.GetBool("FriendlyFire");
+Map.Rotation = GameMode.Parameters.GetBool("MapRotation");
+BreackGraph.OnlyPlayerBlocksDmg = GameMode.Parameters.GetBool("PartialDesruction");
+BreackGraph.WeakBlocks = GameMode.Parameters.GetBool("LoosenBlocks");
+
+// 谩毛卯锚 猫茫冒卯锚脿 芒帽氓茫盲脿 贸帽猫毛氓铆
+BreackGraph.PlayerBlockBoost = true;
+
+// 茂脿冒脿矛氓貌冒没 猫茫冒没
+Properties.GetContext().GameModeName.Value = "GameModes/Team Dead Match";
+TeamsBalancer.IsAutoBalance = true;
+Ui.GetContext().MainTimerId.Value = mainTimer.Id;
+// 帽卯莽盲脿氓矛 锚卯矛脿铆盲没
+Teams.Add("Blue", "Teams/Blue", {
+    b: 1
+});
+Teams.Add("Red", "Teams/Red", {
+    r: 1
+});
+var blueTeam = Teams.Get("Blue");
+var redTeam = Teams.Get("Red");
+blueTeam.Spawns.SpawnPointsGroups.Add(1);
+redTeam.Spawns.SpawnPointsGroups.Add(2);
+blueTeam.Build.BlocksSet.Value = BuildBlocksSet.Blue;
+redTeam.Build.BlocksSet.Value = BuildBlocksSet.Red;
+
+// 莽脿盲脿氓矛 矛脿锚帽 帽矛氓冒貌氓茅 锚卯矛脿铆盲
+var maxDeaths = Players.MaxCount * 5;
+Teams.Get("Red").Properties.Get("Deaths").Value = maxDeaths;
+Teams.Get("Blue").Properties.Get("Deaths").Value = maxDeaths;
+// 莽脿盲脿氓矛 梅貌卯 芒没芒卯盲猫貌眉 芒 毛猫盲氓冒谩卯冒盲脿玫
+LeaderBoard.PlayerLeaderBoardValues = [{
+    Value: "Kills",
+    DisplayName: "Statistics/Kills",
+    ShortDisplayName: "Statistics/KillsShort"
+},
+    {
+        Value: "Deaths",
+        DisplayName: "Statistics/Deaths",
+        ShortDisplayName: "Statistics/DeathsShort"
+    },
+    {
+        Value: "Spawns",
+        DisplayName: "Statistics/Spawns",
+        ShortDisplayName: "Statistics/SpawnsShort"
+    },
+    {
+        Value: "Scores",
+        DisplayName: "Statistics/Scores",
+        ShortDisplayName: "Statistics/ScoresShort"
+    }];
+LeaderBoard.TeamLeaderBoardValue = {
+    Value: "Deaths",
+    DisplayName: "Statistics\Deaths",
+    ShortDisplayName: "Statistics\Deaths"
+};
+// 芒氓帽 锚卯矛脿铆盲没 芒 毛猫盲氓冒谩卯冒盲氓
+LeaderBoard.TeamWeightGetter.Set(function(team) {
+    return team.Properties.Get("Deaths").Value;
+});
+// 芒氓帽 猫茫冒卯锚脿 芒 毛猫盲氓冒谩卯冒盲氓
+LeaderBoard.PlayersWeightGetter.Set(function(player) {
+    return player.Properties.Get("Kills").Value;
+});
+
+// 莽脿盲脿氓矛 梅貌卯 芒没芒卯盲猫貌眉 芒芒氓冒玫贸
+Ui.GetContext().TeamProp1.Value = {
+    Team: "Blue",
+    Prop: "Deaths"
+};
+Ui.GetContext().TeamProp2.Value = {
+    Team: "Red",
+    Prop: "Deaths"
+};
+
+// 冒脿莽冒氓酶脿氓矛 芒玫卯盲 芒 锚卯矛脿铆盲没 茂卯 莽脿茂冒卯帽贸
+Teams.OnRequestJoinTeam.Add(function(player, team) {
+    team.Add(player);
+});
+// 帽茂脿芒铆 茂卯 芒玫卯盲贸 芒 锚卯矛脿铆盲贸
+Teams.OnPlayerChangeTeam.Add(function(player) {
+    player.Spawns.Spawn()});
+
+// 盲氓毛脿氓矛 猫茫冒卯锚卯芒 铆氓贸每莽芒猫矛没矛猫 茂卯帽毛氓 帽茂脿芒铆脿
+var immortalityTimerName = "immortality";
+Spawns.GetContext().OnSpawn.Add(function(player) {
+    player.Properties.Immortality.Value = true;
+    timer = player.Timers.Get(immortalityTimerName).Restart(5);
+});
+Timers.OnPlayerTimer.Add(function(timer) {
+    if (timer.Id != immortalityTimerName) return;
+    timer.Player.Properties.Immortality.Value = false;
+});
+
+// 茂卯帽毛氓 锚脿忙盲卯茅 帽矛氓冒貌猫 猫茫冒卯锚脿 卯貌铆猫矛脿氓矛 卯盲铆贸 帽矛氓冒貌眉 芒 锚卯矛脿铆盲氓
+Properties.OnPlayerProperty.Add(function(context, value) {
+    if (value.Name !== "Deaths") return;
+    if (context.Player.Team == null) return;
+    context.Player.Team.Properties.Get("Deaths").Value--;
+});
+// 氓帽毛猫 芒 锚卯矛脿铆盲氓 锚卯毛猫梅氓帽貌芒卯 帽矛氓冒貌氓茅 莽脿铆贸毛猫毛卯帽眉 貌卯 莽脿芒氓冒酶脿氓矛 猫茫冒贸
+Properties.OnTeamProperty.Add(function(context, value) {
+    if (value.Name !== "Deaths") return;
+    if (value.Value <= 0) SetEndOfMatchMode();
+});
+
+// 帽梅氓貌梅猫锚 帽茂脿芒铆卯芒
+Spawns.OnSpawn.Add(function(player) {
+    ++player.Properties.Spawns.Value;
+});
+// 帽梅氓貌梅猫锚 帽矛氓冒貌氓茅
+Damage.OnDeath.Add(function(player) {
+    ++player.Properties.Deaths.Value;
+});
+// 帽梅氓貌梅猫锚 贸谩猫茅帽貌芒
+Damage.OnKill.Add(function(player, killed) {
+    if (killed.Team != null && killed.Team != player.Team) {
+        ++player.Properties.Kills.Value;
+        player.Properties.Scores.Value += 100;
+    }
+});
+
+// 铆脿帽貌冒卯茅锚脿 茂氓冒氓锚毛镁梅氓铆猫每 冒氓忙猫矛卯芒
+mainTimer.OnTimer.Add(function() {
+    switch (stateProp.Value) {
+        case WaitingStateValue:
+            SetBuildMode();
+            break;
+        case BuildModeStateValue:
+            SetGameMode();
+            break;
+        case GameStateValue:
+            SetEndOfMatchMode();
+            break;
+        case EndOfMatchStateValue:
+            RestartGame();
+            break;
+    }
+});
+
+// 莽脿盲脿氓矛 茂氓冒芒卯氓 猫茫冒卯芒卯氓 帽卯帽貌卯每铆猫氓
+SetWaitingMode();
+
+// 帽卯帽貌卯每铆猫每 猫茫冒没
+function SetWaitingMode() {
+    stateProp.Value = WaitingStateValue;
+    Ui.GetContext().Hint.Value = "Hint/WaitingPlayers";
+    Spawns.GetContext().enable = false;
+    mainTimer.Restart(WaitingPlayersTime);
+}
+
+function SetBuildMode() {
+    stateProp.Value = BuildModeStateValue;
+    Ui.GetContext().Hint.Value = "Hint/BuildBase";
+    var inventory = Inventory.GetContext();
+    inventory.MainIfinity.Value = true;
+    inventory.SecondaryInfinity.Value = true;
+    inventory.Melee.Value =芯邪芯邪芯false;
+    inventory.ExplosiveInfinity.Value = true;
+    inventory.BuildInfinity.Value = true;
+
+    mainTimer.Restart(BuildBaseTime);
+    Spawns.GetContext().enable = true;
+    SpawnTeams();
+}
+function SetGameMode() {
+    stateProp.Value = GameStateValue;
+    Ui.GetContext().Hint.Value = "Hint/AttackEnemies";
+
+    var inventory = Inventory.GetContext();
+    if (GameMode.Parameters.GetBool("OnlyKnives")) {
+        inventory.MainInfinity.Value = true;
+        inventory.SecondaryInfinity.Value = true;
+        inventory.MeleeInfinity.Value = true;
+        inventory.ExplosiveInfinity.Value = true;
+        inventory.BuildInfinity.Value = true;
+    } else {
+        inventory.MainInfinity.Value = true;
+        inventory.SecondaryInfinity.Value = true;
+        inventory.MeleeInfinity.Value = true;
+        inventory.ExplosiveInfinity.Value = true;
+        inventory.BuildInfinity.Value = true;
+    }
+
+    mainTimer.Restart(GameModeTime);
+    Spawns.GetContext().Despawn();
+    SpawnTeams();
+}
+function SetEndOfMatchMode() {
+    stateProp.Value = EndOfMatchStateValue;
+    Ui.GetContext().Hint.Value = "Hint/EndOfMatch";
+
+    var spawns = Spawns.GetContext();
+    spawns.enable = false;
+    spawns.Despawn();
+    Game.GameOver(LeaderBoard.GetTeams());
+    mainTimer.Restart(EndOfMatchTime);
+}
+function RestartGame() {
+    Game.RestartGame();
+}
+
+function SpawnTeams() {
+    var e = Teams.GetEnumerator();
+    while (e.moveNext()) {
+        Spawns.GetContext(e.Current).Spawn();
